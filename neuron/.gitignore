@@ -19,3 +19,8 @@ Thumbs.db
 
 # Debug
 flycheck*/
+
+# Output images
+images/output/
+*.png
+!images/input/*.png

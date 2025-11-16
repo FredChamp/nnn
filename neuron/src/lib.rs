@@ -58,6 +58,7 @@
 pub mod cone;
 pub mod constants;
 pub mod ganglion;
+pub mod image_utils;
 pub mod network;
 pub mod neuron;
 pub mod neurotransmitter;
