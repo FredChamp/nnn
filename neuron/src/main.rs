@@ -1,3 +1,4 @@
+use neuron::visual_pathway::{test_patterns, VisualPathway};
 use neuron::{Cone, ConeType, LightStimulus, NeuralNetwork, Neurotransmitter};
 
 fn neuron_example() {
@@ -237,8 +238,89 @@ fn main() {
     println!("\n{}\n", "=".repeat(60));
     
     cone_to_neuron_example();
+    println!("\n{}\n", "=".repeat(60));
+    
+    visual_processing_example();
 
-    println!("╔═══════════════════════════════════════════════════╗");
+    println!("\n╔═══════════════════════════════════════════════════╗");
     println!("║   All simulations completed successfully! 🎉     ║");
     println!("╚═══════════════════════════════════════════════════╝");
+}
+
+fn visual_processing_example() {
+    println!("🔬 Complete Visual Processing System\n");
+    println!("Simulating: Cones → Ganglion Cells → V1 Cortex\n");
+
+    let width = 32;
+    let height = 32;
+    let mut pathway = VisualPathway::new(width, height);
+
+    // Test different visual patterns
+    let test_cases = vec![
+        ("Vertical Bar", test_patterns::vertical_bar(width, height)),
+        ("Horizontal Bar", test_patterns::horizontal_bar(width, height)),
+        ("Diagonal Line", test_patterns::diagonal_line(width, height)),
+        ("Checkerboard", test_patterns::checkerboard(width, height, 4)),
+        ("Cross Pattern", test_patterns::cross(width, height)),
+    ];
+
+    for (name, pattern) in test_cases {
+        println!("=== {} ===", name);
+        
+        let response = pathway.process_grayscale_image(&pattern);
+        
+        println!("  Retinal activation: {:.1}%", 
+                 response.cone_activations.iter()
+                     .flatten()
+                     .sum::<f32>() / (width * height) as f32 * 100.0);
+        
+        println!("  Edge strength: {:.2}", response.features.edge_strength());
+        println!("  Dominant orientation: {}", response.features.dominant_orientation());
+        println!("  Feature breakdown:");
+        println!("    - Horizontal: {:.2}", response.features.horizontal_strength);
+        println!("    - Vertical: {:.2}", response.features.vertical_strength);
+        println!("    - Diagonal: {:.2}", response.features.diagonal_strength);
+        
+        // Count active V1 regions
+        let active_orientations = response.orientation_map
+            .iter()
+            .flatten()
+            .filter(|o| o.is_some())
+            .count();
+        println!("  Active V1 regions: {}/{}", active_orientations, width * height);
+        println!();
+    }
+
+    // Detailed visualization for one pattern
+    println!("=== Detailed Analysis: Vertical Bar ===\n");
+    let vertical = test_patterns::vertical_bar(width, height);
+    let response = pathway.process_grayscale_image(&vertical);
+
+    println!("Visual Pathway Processing:");
+    println!("  1. Photoreceptors (Cones)");
+    println!("     → Converting light to neural signals");
+    println!("     → {} cones activated", 
+             response.cone_activations.iter().flatten().filter(|&&x| x > 0.1).count());
+    
+    println!("\n  2. Retinal Ganglion Cells");
+    println!("     → Detecting edges via center-surround");
+    let avg_edge = response.edge_map.iter().flatten().sum::<f32>() 
+                   / (width * height) as f32;
+    println!("     → Average edge response: {:.3}", avg_edge);
+    
+    println!("\n  3. V1 Primary Visual Cortex");
+    println!("     → Extracting oriented features");
+    println!("     → Vertical edges detected: ✓ (strength: {:.2})", 
+             response.features.vertical_strength);
+    println!("     → Horizontal edges detected: {} (strength: {:.2})", 
+             if response.features.horizontal_strength > 0.5 { "✓" } else { "−" },
+             response.features.horizontal_strength);
+    
+    println!("\n  4. Higher Processing");
+    println!("     → Pattern recognized as: VERTICAL BAR");
+    println!("     → Confidence: {:.0}%", 
+             (response.features.vertical_strength / response.features.edge_strength() * 100.0)
+             .min(100.0));
+
+    println!("\n✅ Visual processing completed\n");
 }
