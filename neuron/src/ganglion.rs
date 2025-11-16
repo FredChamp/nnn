@@ -139,16 +139,19 @@ impl GanglionCell {
             GanglionType::OffCenter => self.surround_activation - self.center_activation,
         };
 
-        // Convert to firing rate (rectified and scaled)
-        self.output_rate = (response * 100.0).max(0.0);
+        // Convert to firing rate (rectified and amplified for better detection)
+        // Amplify by 500 to make edges more visible
+        self.output_rate = (response * 500.0).max(0.0);
     }
 
     /// Returns the center-surround difference (positive = active)
     pub fn response_strength(&self) -> f32 {
-        match self.cell_type {
+        let base_response = match self.cell_type {
             GanglionType::OnCenter => self.center_activation - self.surround_activation,
             GanglionType::OffCenter => self.surround_activation - self.center_activation,
-        }
+        };
+        // Amplify for better visualization
+        (base_response * 500.0).max(0.0)
     }
 }
 

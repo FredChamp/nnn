@@ -161,7 +161,8 @@ impl V1Neuron {
         }
 
         self.activation = if count > 0 {
-            (response / count as f32).max(0.0)
+            // Amplify by 10x for better visualization
+            ((response / count as f32) * 10.0).max(0.0)
         } else {
             0.0
         };

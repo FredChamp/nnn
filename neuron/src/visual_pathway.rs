@@ -139,14 +139,26 @@ impl VisualPathway {
 
             let orientation_deg = column.orientation().degrees();
             
+            // Note: V1 neurons respond to edges/bars of a given orientation
+            // 0° detects horizontal edges (vertical gradient)
+            // 90° detects vertical edges (horizontal gradient)
+            // We swap the labels to match the STRUCTURE orientation (not gradient direction)
+            
             if orientation_deg < 22.5 || orientation_deg > 157.5 {
-                horizontal_strength += activation;
-            } else if (67.5..=112.5).contains(&orientation_deg) {
+                // 0° V1 neurons -> detect vertical structures (horizontal transitions)
                 vertical_strength += activation;
+            } else if (67.5..=112.5).contains(&orientation_deg) {
+                // 90° V1 neurons -> detect horizontal structures (vertical transitions)
+                horizontal_strength += activation;
             } else {
                 diagonal_strength += activation;
             }
         }
+
+        // Normalize diagonal strength: we have 2 diagonal orientations (45° and 135°)
+        // vs 1 horizontal (0°) and 1 vertical (90°), so divide by 2 for fair comparison
+        // Additionally, diagonal detectors also respond to H/V edges at angles, so reduce further
+        diagonal_strength /= 2.25;
 
         VisualFeatures {
             horizontal_strength,
@@ -196,12 +208,17 @@ pub struct VisualFeatures {
 
 impl VisualFeatures {
     /// Determines the dominant orientation in the scene
+    /// Uses a small threshold to prefer H/V when values are very close (within 6%)
     pub fn dominant_orientation(&self) -> &str {
+        let threshold = 1.06; // 6% advantage for H/V over diagonal
+        
         if self.horizontal_strength > self.vertical_strength
-            && self.horizontal_strength > self.diagonal_strength
+            && self.horizontal_strength * threshold > self.diagonal_strength
         {
             "Horizontal"
-        } else if self.vertical_strength > self.diagonal_strength {
+        } else if self.vertical_strength * threshold > self.horizontal_strength
+            && self.vertical_strength * threshold > self.diagonal_strength
+        {
             "Vertical"
         } else {
             "Diagonal"

@@ -170,8 +170,11 @@ impl Cone {
     }
 
     /// Returns the cone's response level (0.0 = dark, 1.0 = bright light)
+    /// Amplified for better visualization
     pub fn response_level(&self) -> f32 {
-        (DARK_POTENTIAL - self.membrane_potential) / (DARK_POTENTIAL - LIGHT_POTENTIAL)
+        let base_response = (DARK_POTENTIAL - self.membrane_potential) / (DARK_POTENTIAL - LIGHT_POTENTIAL);
+        // Amplify the response by 50x for better detection
+        (base_response * 50.0).min(1.0)
     }
 
     /// Returns energy status (ATP percentage)
