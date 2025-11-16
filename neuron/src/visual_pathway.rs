@@ -4,6 +4,7 @@ use crate::cone::Cone;
 use crate::ganglion::GanglionLayer;
 use crate::photopigment::{ConeType, LightStimulus};
 use crate::v1_cortex::{Orientation, V1Cortex};
+use crate::v2_cortex::{V2Cortex, V2Response};
 
 /// Complete visual system simulation
 pub struct VisualPathway {
@@ -13,6 +14,7 @@ pub struct VisualPathway {
     
     // Cortical processing
     v1_cortex: V1Cortex,
+    v2_cortex: V2Cortex,
     
     // Image dimensions
     width: usize,
@@ -48,11 +50,15 @@ impl VisualPathway {
 
         // Create V1 cortex (orientation detection)
         let v1_cortex = V1Cortex::new(width, height, 8, 5);
+        
+        // Create V2 cortex (corners and contours) - smaller spacing and larger RF
+        let v2_cortex = V2Cortex::new(width, height, 4); // spacing reduced from 8 to 4
 
         Self {
             cones,
             ganglion_layer,
             v1_cortex,
+            v2_cortex,
             width,
             height,
         }
@@ -76,14 +82,18 @@ impl VisualPathway {
         // Stage 3: V1 cortex extracts oriented features
         self.v1_cortex.process_edges(&edge_map);
         let orientation_map = self.v1_cortex.orientation_map();
+        
+        // Stage 4: V2 cortex detects corners and contours
+        let v2_features = self.v2_cortex.process(&orientation_map, &edge_map);
 
-        // Stage 4: Compute feature statistics
+        // Stage 5: Compute feature statistics
         let features = self.extract_features();
 
         VisualResponse {
             cone_activations: cone_responses,
             edge_map,
             orientation_map,
+            v2_features,
             features,
         }
     }
@@ -185,6 +195,9 @@ pub struct VisualResponse {
     
     /// Dominant orientation at each location (if any)
     pub orientation_map: Vec<Vec<Option<Orientation>>>,
+    
+    /// V2 features (corners and contours)
+    pub v2_features: crate::v2_cortex::V2Response,
     
     /// High-level extracted features
     pub features: VisualFeatures,
