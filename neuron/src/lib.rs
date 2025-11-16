@@ -1,12 +1,14 @@
 //! A biologically-inspired neural network simulator
 //!
-//! This library provides a realistic simulation of neurons with:
+//! This library provides a realistic simulation of neurons and photoreceptors with:
 //! - Anatomical components (dendrites, soma, axon, synapses)
 //! - Physiological properties (resting potential, action potentials, refractory period)
 //! - Neurotransmitter systems (glutamate, GABA, dopamine, serotonin)
+//! - Retinal photoreceptors (cone cells with phototransduction)
 //!
 //! # Examples
 //!
+//! ## Neural Network
 //! ```
 //! use neuron::{NeuralNetwork, Neurotransmitter};
 //!
@@ -23,15 +25,33 @@
 //! // Run simulation
 //! network.step(&[(n0, 25.0)]);
 //! ```
+//!
+//! ## Cone Photoreceptors
+//! ```
+//! use neuron::{Cone, ConeType, LightStimulus};
+//!
+//! // Create an L-cone (red-sensitive)
+//! let mut cone = Cone::new(0, ConeType::L);
+//!
+//! // Stimulate with red light
+//! cone.phototransduction(LightStimulus::red(100.0));
+//!
+//! // Check response
+//! println!("Membrane potential: {} mV", cone.membrane_potential());
+//! ```
 
+pub mod cone;
 pub mod constants;
 pub mod network;
 pub mod neuron;
 pub mod neurotransmitter;
+pub mod photopigment;
 pub mod synapse;
 
 // Re-export main types for convenience
+pub use cone::Cone;
 pub use network::NeuralNetwork;
 pub use neuron::Neuron;
 pub use neurotransmitter::Neurotransmitter;
+pub use photopigment::{ConeType, LightStimulus};
 pub use synapse::Synapse;
