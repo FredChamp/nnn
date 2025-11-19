@@ -5,6 +5,7 @@ use crate::ganglion::GanglionLayer;
 use crate::photopigment::{ConeType, LightStimulus};
 use crate::v1_cortex::{Orientation, V1Cortex};
 use crate::v2_cortex::{V2Cortex, V2Response};
+use crate::v4_cortex::V4Cortex;
 
 /// Complete visual system simulation
 pub struct VisualPathway {
@@ -15,6 +16,7 @@ pub struct VisualPathway {
     // Cortical processing
     v1_cortex: V1Cortex,
     v2_cortex: V2Cortex,
+    v4_cortex: V4Cortex,
     
     // Image dimensions
     width: usize,
@@ -54,11 +56,15 @@ impl VisualPathway {
         // Create V2 cortex (corners and contours) - smaller spacing and larger RF
         let v2_cortex = V2Cortex::new(width, height, 4); // spacing reduced from 8 to 4
 
+        // Create V4 cortex (shape detection)
+        let v4_cortex = V4Cortex::new(width, height, 8);
+
         Self {
             cones,
             ganglion_layer,
             v1_cortex,
             v2_cortex,
+            v4_cortex,
             width,
             height,
         }
@@ -86,7 +92,10 @@ impl VisualPathway {
         // Stage 4: V2 cortex detects corners and contours
         let v2_features = self.v2_cortex.process(&orientation_map, &edge_map);
 
-        // Stage 5: Compute feature statistics
+        // Stage 5: V4 cortex detects shapes
+        let v4_features = self.v4_cortex.process(&v2_features);
+
+        // Stage 6: Compute feature statistics
         let features = self.extract_features();
 
         VisualResponse {
@@ -94,6 +103,7 @@ impl VisualPathway {
             edge_map,
             orientation_map,
             v2_features,
+            v4_features,
             features,
         }
     }
@@ -198,6 +208,9 @@ pub struct VisualResponse {
     
     /// V2 features (corners and contours)
     pub v2_features: crate::v2_cortex::V2Response,
+    
+    /// V4 features (shapes)
+    pub v4_features: crate::v4_cortex::V4Response,
     
     /// High-level extracted features
     pub features: VisualFeatures,

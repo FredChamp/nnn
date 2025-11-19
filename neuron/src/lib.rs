@@ -66,6 +66,7 @@ pub mod photopigment;
 pub mod synapse;
 pub mod v1_cortex;
 pub mod v2_cortex;
+pub mod v4_cortex;
 pub mod visual_pathway;
 
 // Re-export main types for convenience
@@ -78,4 +79,5 @@ pub use photopigment::{ConeType, LightStimulus};
 pub use synapse::Synapse;
 pub use v1_cortex::{Orientation, V1Cortex, V1Neuron, V1NeuronType};
 pub use v2_cortex::{CornerType, V2Cortex, V2Response};
+pub use v4_cortex::{ShapeType, V4Cortex, V4Response};
 pub use visual_pathway::VisualPathway;
