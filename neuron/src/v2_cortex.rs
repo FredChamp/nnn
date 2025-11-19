@@ -255,7 +255,7 @@ impl V2ContourDetector {
         }
     }
 
-    /// Detect continuous contours in edge map
+    /// Detect contours (continuous edge paths)
     pub fn detect_contours(&mut self, edge_map: &[Vec<f32>]) -> Vec<Vec<(usize, usize)>> {
         if edge_map.is_empty() {
             return Vec::new();
@@ -263,14 +263,18 @@ impl V2ContourDetector {
 
         let height = edge_map.len();
         let width = edge_map[0].len();
+        
+        // Dilate edge map to connect nearby edges
+        let dilated_map = self.dilate_edge_map(edge_map);
+        
         let mut visited = vec![vec![false; width]; height];
         let mut contours = Vec::new();
 
         // Find contour starting points (strong edges)
         for y in 0..height {
             for x in 0..width {
-                if edge_map[y][x] > 1.0 && !visited[y][x] {
-                    if let Some(contour) = self.trace_contour(edge_map, &mut visited, x, y) {
+                if dilated_map[y][x] > 0.5 && !visited[y][x] {
+                    if let Some(contour) = self.trace_contour(&dilated_map, &mut visited, x, y) {
                         if contour.len() >= self.path_length {
                             contours.push(contour);
                         }
@@ -322,7 +326,7 @@ impl V2ContourDetector {
                     let nx = nx as usize;
                     let ny = ny as usize;
 
-                    if !visited[ny][nx] && edge_map[ny][nx] > 0.5 {
+                    if !visited[ny][nx] && edge_map[ny][nx] > 0.01 {  // Very low threshold to connect sparse edges
                         if edge_map[ny][nx] > best_strength {
                             best_strength = edge_map[ny][nx];
                             best_neighbor = Some((nx, ny));
@@ -341,16 +345,46 @@ impl V2ContourDetector {
             }
         }
 
-        if contour.len() > 2 {
-            Some(contour)
-        } else {
+        // Return contour if it has at least 1 point
+        if contour.is_empty() {
             None
+        } else {
+            Some(contour)
         }
     }
 
     /// Returns current activation
     pub fn activation(&self) -> f32 {
         self.activation
+    }
+
+    /// Dilate edge map to connect nearby edges
+    fn dilate_edge_map(&self, edge_map: &[Vec<f32>]) -> Vec<Vec<f32>> {
+        let height = edge_map.len();
+        let width = edge_map[0].len();
+        let mut dilated = vec![vec![0.0; width]; height];
+
+        for y in 0..height {
+            for x in 0..width {
+                let mut max_val = edge_map[y][x];
+                
+                // Check 3x3 neighborhood
+                for dy in -1..=1 {
+                    for dx in -1..=1 {
+                        let nx = x as i32 + dx;
+                        let ny = y as i32 + dy;
+                        
+                        if nx >= 0 && ny >= 0 && (nx as usize) < width && (ny as usize) < height {
+                            max_val = max_val.max(edge_map[ny as usize][nx as usize]);
+                        }
+                    }
+                }
+                
+                dilated[y][x] = max_val;
+            }
+        }
+        
+        dilated
     }
 }
 
@@ -395,7 +429,7 @@ impl V2Cortex {
             }
         }
 
-        let contour_detector = V2ContourDetector::new(0, 5, 0.5);
+        let contour_detector = V2ContourDetector::new(0, 3, 0.5); // Reduced from 5 to 3
 
         Self {
             corner_detectors,

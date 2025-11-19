@@ -129,6 +129,129 @@ pub fn get_image_dimensions<P: AsRef<Path>>(path: P) -> Result<(u32, u32), Strin
     Ok(img.dimensions())
 }
 
+/// Visualize corner map as RGB image
+/// Different corner types are shown in different colors
+pub fn visualize_corner_map(
+    corner_map: &[Vec<Option<crate::v2_cortex::CornerType>>],
+    output_path: &str,
+) -> Result<(), String> {
+    use image::{ImageBuffer, Rgb};
+    
+    let height = corner_map.len();
+    let width = if height > 0 { corner_map[0].len() } else { 0 };
+    
+    let mut img: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::new(width as u32, height as u32);
+    
+    for y in 0..height {
+        for x in 0..width {
+            let color = match corner_map[y][x] {
+                Some(crate::v2_cortex::CornerType::LJunction) => Rgb([255u8, 0u8, 0u8]),      // Red
+                Some(crate::v2_cortex::CornerType::TJunction) => Rgb([0u8, 255u8, 0u8]),      // Green
+                Some(crate::v2_cortex::CornerType::XJunction) => Rgb([0u8, 0u8, 255u8]),      // Blue
+                Some(crate::v2_cortex::CornerType::YJunction) => Rgb([255u8, 255u8, 0u8]),    // Yellow
+                None => Rgb([0u8, 0u8, 0u8]),                                                  // Black
+            };
+            img.put_pixel(x as u32, y as u32, color);
+        }
+    }
+    
+    img.save(output_path)
+        .map_err(|e| format!("Failed to save corner map: {}", e))
+}
+
+/// Visualize contours on a black background
+pub fn visualize_contours(
+    contours: &[Vec<(usize, usize)>],
+    width: usize,
+    height: usize,
+    output_path: &str,
+) -> Result<(), String> {
+    use image::{ImageBuffer, Rgb};
+    
+    let mut img: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::new(width as u32, height as u32);
+    
+    // Fill with black background
+    for y in 0..height {
+        for x in 0..width {
+            img.put_pixel(x as u32, y as u32, Rgb([0u8, 0u8, 0u8]));
+        }
+    }
+    
+    // Draw each contour in a different color (cycling through colors)
+    let colors = vec![
+        Rgb([255u8, 0u8, 0u8]),      // Red
+        Rgb([0u8, 255u8, 0u8]),      // Green
+        Rgb([0u8, 0u8, 255u8]),      // Blue
+        Rgb([255u8, 255u8, 0u8]),    // Yellow
+        Rgb([255u8, 0u8, 255u8]),    // Magenta
+        Rgb([0u8, 255u8, 255u8]),    // Cyan
+        Rgb([255u8, 128u8, 0u8]),    // Orange
+        Rgb([128u8, 0u8, 255u8]),    // Purple
+    ];
+    
+    for (i, contour) in contours.iter().enumerate() {
+        let color = colors[i % colors.len()];
+        for &(x, y) in contour {
+            if x < width && y < height {
+                img.put_pixel(x as u32, y as u32, color);
+            }
+        }
+    }
+    
+    img.save(output_path)
+        .map_err(|e| format!("Failed to save contours: {}", e))
+}
+
+/// Create a composite visualization with original image, corners, and contours
+pub fn visualize_v2_composite(
+    original: &[Vec<f32>],
+    corner_map: &[Vec<Option<crate::v2_cortex::CornerType>>],
+    contours: &[Vec<(usize, usize)>],
+    output_path: &str,
+) -> Result<(), String> {
+    use image::{ImageBuffer, Rgb};
+    
+    let height = original.len();
+    let width = if height > 0 { original[0].len() } else { 0 };
+    
+    let mut img: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::new(width as u32, height as u32);
+    
+    // Start with grayscale original image
+    for y in 0..height {
+        for x in 0..width {
+            let gray = (original[y][x] * 255.0) as u8;
+            img.put_pixel(x as u32, y as u32, Rgb([gray, gray, gray]));
+        }
+    }
+    
+    // Overlay contours in white (semi-transparent effect via brightening)
+    for contour in contours {
+        for &(x, y) in contour {
+            if x < width && y < height {
+                img.put_pixel(x as u32, y as u32, Rgb([255u8, 255u8, 255u8]));
+            }
+        }
+    }
+    
+    // Overlay corners in bright colors (highest priority)
+    for y in 0..height {
+        for x in 0..width {
+            if let Some(corner_type) = corner_map[y][x] {
+                let color = match corner_type {
+                    crate::v2_cortex::CornerType::LJunction => Rgb([255u8, 0u8, 0u8]),      // Red
+                    crate::v2_cortex::CornerType::TJunction => Rgb([0u8, 255u8, 0u8]),      // Green
+                    crate::v2_cortex::CornerType::XJunction => Rgb([0u8, 0u8, 255u8]),      // Blue
+                    crate::v2_cortex::CornerType::YJunction => Rgb([255u8, 255u8, 0u8]),    // Yellow
+                };
+                img.put_pixel(x as u32, y as u32, color);
+            }
+        }
+    }
+    
+    img.save(output_path)
+        .map_err(|e| format!("Failed to save composite: {}", e))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
