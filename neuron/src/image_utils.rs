@@ -252,6 +252,120 @@ pub fn visualize_v2_composite(
         .map_err(|e| format!("Failed to save composite: {}", e))
 }
 
+/// Visualize V4 shape detection map with color-coded shapes
+pub fn visualize_v4_shapes(
+    original: &[Vec<f32>],
+    shape_map: &[Vec<Option<crate::v4_cortex::ShapeType>>],
+    output_path: &str,
+) -> Result<(), String> {
+    use image::{ImageBuffer, Rgb};
+    
+    let height = original.len();
+    let width = if height > 0 { original[0].len() } else { 0 };
+    
+    let mut img: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::new(width as u32, height as u32);
+    
+    // Start with grayscale original image (dimmed)
+    for y in 0..height {
+        for x in 0..width {
+            let gray = (original[y][x] * 180.0) as u8; // Dimmed to 70%
+            img.put_pixel(x as u32, y as u32, Rgb([gray, gray, gray]));
+        }
+    }
+    
+    // Overlay detected shapes with colors
+    for y in 0..height {
+        for x in 0..width {
+            if let Some(shape_type) = shape_map[y][x] {
+                let color = match shape_type {
+                    crate::v4_cortex::ShapeType::Circle => Rgb([255u8, 0u8, 255u8]),      // Magenta
+                    crate::v4_cortex::ShapeType::Rectangle => Rgb([0u8, 255u8, 0u8]),     // Green
+                    crate::v4_cortex::ShapeType::Triangle => Rgb([255u8, 255u8, 0u8]),    // Yellow
+                    crate::v4_cortex::ShapeType::Line => Rgb([0u8, 255u8, 255u8]),        // Cyan
+                    crate::v4_cortex::ShapeType::Cross => Rgb([255u8, 0u8, 0u8]),         // Red
+                    crate::v4_cortex::ShapeType::Complex => Rgb([128u8, 128u8, 128u8]),   // Gray
+                };
+                img.put_pixel(x as u32, y as u32, color);
+            }
+        }
+    }
+    
+    img.save(output_path)
+        .map_err(|e| format!("Failed to save V4 shapes: {}", e))
+}
+
+/// Visualize V4 shape detection with legend
+pub fn visualize_v4_with_legend(
+    original: &[Vec<f32>],
+    shape_map: &[Vec<Option<crate::v4_cortex::ShapeType>>],
+    output_path: &str,
+) -> Result<(), String> {
+    use image::{ImageBuffer, Rgb};
+    
+    let height = original.len();
+    let width = if height > 0 { original[0].len() } else { 0 };
+    
+    // Create image with space for legend on the right
+    let legend_width = 200;
+    let total_width = width + legend_width;
+    let mut img: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::new(total_width as u32, height as u32);
+    
+    // Fill legend area with white
+    for y in 0..height {
+        for x in width..total_width {
+            img.put_pixel(x as u32, y as u32, Rgb([255u8, 255u8, 255u8]));
+        }
+    }
+    
+    // Draw original image (dimmed) in main area
+    for y in 0..height {
+        for x in 0..width {
+            let gray = (original[y][x] * 180.0) as u8;
+            img.put_pixel(x as u32, y as u32, Rgb([gray, gray, gray]));
+        }
+    }
+    
+    // Overlay detected shapes
+    for y in 0..height {
+        for x in 0..width {
+            if let Some(shape_type) = shape_map[y][x] {
+                let color = match shape_type {
+                    crate::v4_cortex::ShapeType::Circle => Rgb([255u8, 0u8, 255u8]),
+                    crate::v4_cortex::ShapeType::Rectangle => Rgb([0u8, 255u8, 0u8]),
+                    crate::v4_cortex::ShapeType::Triangle => Rgb([255u8, 255u8, 0u8]),
+                    crate::v4_cortex::ShapeType::Line => Rgb([0u8, 255u8, 255u8]),
+                    crate::v4_cortex::ShapeType::Cross => Rgb([255u8, 0u8, 0u8]),
+                    crate::v4_cortex::ShapeType::Complex => Rgb([128u8, 128u8, 128u8]),
+                };
+                img.put_pixel(x as u32, y as u32, color);
+            }
+        }
+    }
+    
+    // Draw legend (color boxes)
+    let legend_items = [
+        (Rgb([255u8, 0u8, 255u8]), "Circle"),
+        (Rgb([0u8, 255u8, 0u8]), "Rectangle"),
+        (Rgb([255u8, 255u8, 0u8]), "Triangle"),
+        (Rgb([0u8, 255u8, 255u8]), "Line"),
+        (Rgb([255u8, 0u8, 0u8]), "Cross"),
+        (Rgb([128u8, 128u8, 128u8]), "Complex"),
+    ];
+    
+    for (i, (color, _name)) in legend_items.iter().enumerate() {
+        let y_pos = 20 + i * 40;
+        // Draw color box
+        for dy in 0..20 {
+            for dx in 0..20 {
+                img.put_pixel((width + 10 + dx) as u32, (y_pos + dy) as u32, *color);
+            }
+        }
+    }
+    
+    img.save(output_path)
+        .map_err(|e| format!("Failed to save V4 with legend: {}", e))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
